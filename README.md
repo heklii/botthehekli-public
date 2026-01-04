@@ -90,7 +90,7 @@ To let the bot control your Spotify playback, you need a free Developer App.
     *   Click **Save All Music Settings**.
 
 ## Running the Bot
-- **GUI Mode**: Double-click **`run_gui.bat`**. This launches the Control Panel where you can start/stop the bot and edit settings.
+- **GUI Mode**: Double-click **`run_gui.bat`** (Shows console for logs) or **`run_gui_noconsole.bat`** (Silent). This launches the Control Panel.
 - **Console Mode**: Double-click **`run_bot.bat`**. This runs the bot directly in a terminal window.
 
 ## Usage

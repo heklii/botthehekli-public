@@ -1,1 +1,2 @@
-start "" pythonw gui.py
+python gui.py
+pause
