@@ -525,7 +525,7 @@ class BotGUI:
             pystray.MenuItem('Exit', self.exit_app)
         )
         
-        self.tray_icon = pystray.Icon("evening_bot", image, "botthehekli", menu)
+        self.tray_icon = pystray.Icon("botthehekli", image, "botthehekli", menu)
         threading.Thread(target=self.tray_icon.run, daemon=True).start()
 
     def minimize_to_tray(self):

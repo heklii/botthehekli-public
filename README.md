@@ -1,4 +1,4 @@
-# botthehekli (Evening Bot)
+# botthehekli
 
 A powerful, locally-hosted Twitch bot with Spotify/Cider music integration, custom commands, and a GUI control panel.
 

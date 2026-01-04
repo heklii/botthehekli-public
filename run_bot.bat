@@ -1,5 +1,5 @@
 @echo off
-title Evening Bot
+title botthehekli
 
 :loop
 echo Starting Bot...
