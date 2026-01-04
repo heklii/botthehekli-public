@@ -1659,6 +1659,41 @@ if __name__ == "__main__":
     if not TWITCH_TOKEN or not CHANNEL:
         print("Error: TWITCH_TOKEN or CHANNEL not set in config/env.")
         sys.exit(1)
+        
+    # Pre-flight Token Validation
+    try:
+        from token_manager import TokenManager
+        import asyncio
+        
+        print("Validating tokens before startup...")
+        valid = asyncio.run(TokenManager().validate_and_refresh_tokens())
+        
+        if not valid:
+            print("\n" + "!"*50)
+            print("CRITICAL: TOKEN VALIDATION FAILED")
+            print("Please run 'generate_token.bat' to re-authorize the bot.")
+            print("!"*50 + "\n")
+            input("Press Enter to exit...")
+            sys.exit(1)
+            
+        # Re-load env if refreshed
+        load_dotenv(override=True)
+        
+    except ImportError:
+        print("Warning: Could not import TokenManager for pre-flight check.")
+    except Exception as e:
+        print(f"Warning: Pre-flight token check failed: {e}")
     
-    bot = Bot()
-    bot.run()
+    try:
+        bot = Bot()
+        bot.run()
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        # Check for auth error string (since we might not have the class imported to catch)
+        if "AuthenticationError" in str(e) or "401" in str(e):
+            print("\n" + "!"*50)
+            print("AUTHENTICATION ERROR: The bot token is invalid or expired.")
+            print("Please run 'generate_token.bat' to fix this.")
+            print("!"*50 + "\n")
+        input("Press Enter to exit...")
