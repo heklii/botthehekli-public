@@ -1,0 +1,6 @@
+{
+    "broadcaster_client_id": "your_broadcaster_client_id_here",
+    "broadcaster_client_secret": "your_broadcaster_client_secret_here",
+    "bot_client_id": "your_bot_client_id_here",
+    "bot_client_secret": "your_bot_client_secret_here"
+}

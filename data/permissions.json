@@ -1,1 +1,55 @@
-{}
+{
+    "!alias": [
+        "moderator",
+        "broadcaster"
+    ],
+    "!csr": [
+        "moderator",
+        "broadcaster"
+    ],
+    "!clip": [
+        "moderator",
+        "broadcaster"
+    ],
+    "!game": [
+        "moderator",
+        "broadcaster"
+    ],
+    "!commands": [
+        "moderator",
+        "broadcaster"
+    ],
+    "!reload": [
+        "moderator",
+        "broadcaster"
+    ],
+    "!skip": [
+        "moderator",
+        "broadcaster"
+    ],
+    "!song": [
+        "everyone"
+    ],
+    "!sr": [
+        "moderator",
+        "broadcaster"
+    ],
+    "!title": [
+        "moderator",
+        "broadcaster"
+    ],
+    "!update": [
+        "moderator",
+        "broadcaster"
+    ],
+    "!winner": [
+        "moderator",
+        "broadcaster"
+    ],
+    "!discord": [
+        "everyone"
+    ],
+    "!socials": [
+        "everyone"
+    ]
+}

@@ -8,4 +8,5 @@ venv/
 # Bot specific
 .backup/
 .spotify_cache
-token_generator/
+token_generator/config.json
+data/*.json

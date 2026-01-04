@@ -1,0 +1,9 @@
+# Token Generator Configuration
+This file stores your Twitch application credentials so you don't have to re-enter them every time.
+
+**Note:** This file contains sensitive credentials. Do not share it or commit it to version control.
+
+The credentials are automatically created when you run the token generator for the first time.
+
+# Ignore sensitive files
+config.json
