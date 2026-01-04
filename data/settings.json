@@ -1,0 +1,12 @@
+{
+    "auto_start_bot": false,
+    "start_minimized": false,
+    "minimize_to_tray_on_close": true,
+    "active_music_service": "spotify",
+    "spotify_playlist_url": "",
+    "history_to_playlist": false,
+    "disable_requests_offline": false,
+    "auto_refund_on_error": true,
+    "auto_fulfill_on_success": true,
+    "spotify_requests_enabled": true
+}

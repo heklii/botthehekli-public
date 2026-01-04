@@ -1,0 +1,12 @@
+twitchio==2.9.1
+aiohttp
+python-dotenv
+spotipy
+websockets
+simpleeval
+pystray
+Pillow
+watchdog
+flask
+werkzeug
+requests

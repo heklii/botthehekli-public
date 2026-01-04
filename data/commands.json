@@ -1,0 +1,12 @@
+{
+    "!discord": {
+        "response": "Join our community! https://discord.gg/yourlink",
+        "ul": "everyone",
+        "type": "custom"
+    },
+    "!socials": {
+        "response": "Follow me on Twitter: @yourname",
+        "ul": "everyone",
+        "type": "custom"
+    }
+}

@@ -1,0 +1,127 @@
+{
+    "sr_success": {
+        "template": "/me @$(user) requested {track_name} by {artist}",
+        "description": "Song request success",
+        "enabled": true
+    },
+    "sr_no_query": {
+        "template": "/me @$(user), put a song name or spotify link buddy...",
+        "description": "No query provided",
+        "enabled": true
+    },
+    "sr_offline": {
+        "template": "@$(user) man im offline leave me alone anga",
+        "description": "Stream offline",
+        "enabled": true
+    },
+    "sr_search_failed": {
+        "template": "/me @$(user) check again, i got no results for: {query}",
+        "description": "Search found no results",
+        "enabled": true
+    },
+    "sr_search_error": {
+        "template": "/me @$(user) search broke (( ",
+        "description": "Search encountered error",
+        "enabled": true
+    },
+    "sr_timeout": {
+        "template": "@$(user) spotify api died again. dw your points got refunded.",
+        "description": "Request timed out",
+        "enabled": true
+    },
+    "sr_track_info_failed": {
+        "template": "/me @$(user) man how hard is it to put a song name or a working spotify link...",
+        "description": "Failed to retrieve track information",
+        "enabled": true
+    },
+    "sr_queue_timeout": {
+        "template": "/me @$(user) adding to queue timed out, try again",
+        "description": "Queue add timed out",
+        "enabled": true
+    },
+    "sr_no_device": {
+        "template": "/me @$(user) this guy needs to start listening to music before requests work plink",
+        "description": "No active Spotify device",
+        "enabled": true
+    },
+    "sr_premium_required": {
+        "template": "/me @$(user) need spotify premium for queue feature",
+        "description": "Premium subscription required",
+        "enabled": true
+    },
+    "sr_api_error": {
+        "template": "/me @$(user) spotify api died so try again glorp.",
+        "description": "Spotify API error",
+        "enabled": true
+    },
+    "sr_queue_failed": {
+        "template": "/me @$(user) failed to add to queue, try again glerp",
+        "description": "Generic queue add failure",
+        "enabled": true
+    },
+    "sr_error": {
+        "template": "/me @$(user) so um this happened: {error_code}",
+        "description": "Generic fallback error",
+        "enabled": true
+    },
+    "song_success": {
+        "template": "{track_name} by {artist}, @$(user)",
+        "description": "Now playing success",
+        "enabled": true
+    },
+    "song_no_track_playing": {
+        "template": "/me @$(user) does it look like im listening to music?",
+        "description": "No track currently playing",
+        "enabled": true
+    },
+    "song_track_info_error": {
+        "template": "/me @$(user) are u sure this is a real song scrajj",
+        "description": "Error retrieving track info",
+        "enabled": true
+    },
+    "song_error": {
+        "template": "/me @$(user) error getting current song: {error_code}",
+        "description": "Generic song error",
+        "enabled": true
+    },
+    "skip_success": {
+        "template": "ok i skipped the track @$(user)",
+        "description": "Skip success",
+        "enabled": true
+    },
+    "skip_failed": {
+        "template": "/me @$(user) couldnt skip, try again",
+        "description": "Skip failed",
+        "enabled": true
+    },
+    "skip_error": {
+        "template": "/me @$(user) i cant man this happened: {error_code}",
+        "description": "Generic skip error",
+        "enabled": true
+    },
+    "spotify_not_connected": {
+        "template": "/me spotify isnt connected.",
+        "description": "Spotify client not initialized",
+        "enabled": true
+    },
+    "cp_success": {
+        "template": "/me @$(user) requested {track_name} by {artist}",
+        "description": "Channel point redemption success",
+        "enabled": true
+    },
+    "cp_no_input": {
+        "template": "/me $(user), man how hard is it to put a song name or a spotify link...",
+        "description": "Channel points redemption without input",
+        "enabled": true
+    },
+    "cp_offline": {
+        "template": "@$(user) man im offline leave me alone",
+        "description": "Channel points redemption while offline",
+        "enabled": true
+    },
+    "cp_error_refunded": {
+        "template": "/me @$(user) {error_message}. i refunded the points dw.",
+        "description": "Channel points error with refund",
+        "enabled": true
+    }
+}

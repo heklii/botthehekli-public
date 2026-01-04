@@ -1,0 +1,46 @@
+{
+    "!song": [
+        "everyone"
+    ],
+    "!sr": [
+        "moderator",
+        "broadcaster"
+    ],
+    "!request": [
+        "everyone"
+    ],
+    "!skip": [
+        "moderator",
+        "broadcaster"
+    ],
+    "!addcom": [
+        "moderator",
+        "broadcaster"
+    ],
+    "!editcom": [
+        "moderator",
+        "broadcaster"
+    ],
+    "!delcom": [
+        "moderator",
+        "broadcaster"
+    ],
+    "!commands": [
+        "everyone",
+        "moderator",
+        "broadcaster"
+    ],
+    "!title": [
+        "moderator",
+        "broadcaster"
+    ],
+    "!game": [
+        "moderator",
+        "broadcaster"
+    ],
+    "!winner": [
+        "moderator",
+        "broadcaster"
+    ],
+    "!clip": []
+}
