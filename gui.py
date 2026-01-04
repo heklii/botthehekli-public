@@ -1494,11 +1494,28 @@ if __name__ == "__main__":
         app.run()
     except Exception as e:
         import traceback
-        if sys.__stderr__:
-            sys.__stderr__.write(f"CRITICAL ERROR: {e}\n")
-            traceback.print_exc(file=sys.__stderr__)
-        else:
-            with open("crash_log.txt", "w") as f:
-                f.write(f"CRITICAL ERROR: {e}\n")
-                traceback.print_exc(file=f)
-        input("Press Enter to exit...")
+        import datetime
+        
+        # Log to file
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        error_details = traceback.format_exc()
+        error_msg = f"[{timestamp}] CRITICAL STARTUP ERROR:\n{error_details}\n{'-'*50}\n"
+        
+        with open("crash_log.txt", "a", encoding='utf-8') as f:
+            f.write(error_msg)
+            
+        # Error Dialog
+        try:
+            # Create a minimal root if needed for the messagebox
+            if 'tk' not in sys.modules:
+                import tkinter as tk
+            if 'messagebox' not in sys.modules:
+                from tkinter import messagebox
+                
+            # We try to use the existing root if logical, but safe to create new hidden one for the error
+            err_root = tk.Tk()
+            err_root.withdraw()
+            messagebox.showerror("Startup Error", f"The application failed to start.\n\nError: {e}\n\nDetails saved to crash_log.txt")
+            err_root.destroy()
+        except:
+            pass # Fallback if GUI fails completely
