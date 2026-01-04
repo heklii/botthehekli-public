@@ -1663,9 +1663,15 @@ if __name__ == "__main__":
     # Pre-flight Token Validation
     try:
         from token_manager import TokenManager
+        from dotenv import load_dotenv
         import asyncio
         
         print("Validating tokens before startup...")
+        
+        # In Python 3.10+, checking or creating a loop is tricky if one doesn't exist.
+        # asyncio.run() creates a new one and closes it.
+        # This is fine for the check, BUT we must ensure a loop exists for TwitchIO afterwards.
+        
         valid = asyncio.run(TokenManager().validate_and_refresh_tokens())
         
         if not valid:
@@ -1685,6 +1691,12 @@ if __name__ == "__main__":
         print(f"Warning: Pre-flight token check failed: {e}")
     
     try:
+        # FIX: Ensure a new event loop is set for the main thread, 
+        # because asyncio.run() above might have closed the previous one 
+        # or left the thread without one.
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
         bot = Bot()
         bot.run()
     except Exception as e:
