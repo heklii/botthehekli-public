@@ -6,6 +6,13 @@ import time
 import subprocess
 import datetime
 import psutil
+import requests
+import zipfile
+import io
+
+REPO_OWNER = "heklii"
+REPO_NAME = "botthehekli-public"
+BRANCH = "main"
 
 # Configuration
 # Assuming we are running from the bot's root directory
@@ -41,6 +48,85 @@ def create_backup():
              
     log("Backup complete.")
 
+def get_remote_commit_sha():
+    """Fetch the latest commit SHA from GitHub API."""
+    try:
+        url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/commits/{BRANCH}"
+        resp = requests.get(url, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+        return data['sha']
+    except Exception as e:
+        log(f"Failed to fetch remote SHA: {e}")
+        return None
+
+def get_local_version():
+    """Get local version (SHA). First check git, then version.txt."""
+    # 1. Try Git
+    try:
+        if os.path.exists(".git"):
+            return subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+    except:
+        pass
+        
+    # 2. Try version.txt
+    if os.path.exists("version.txt"):
+        try:
+            with open("version.txt", "r") as f:
+                return f.read().strip()
+        except:
+            pass
+            
+    return None
+
+def update_from_zip():
+    """Download and extract ZIP from GitHub, preserving data."""
+    log("Starting ZIP update...")
+    try:
+        # 1. Download ZIP
+        url = f"https://github.com/{REPO_OWNER}/{REPO_NAME}/archive/{BRANCH}.zip"
+        log(f"Downloading {url}...")
+        resp = requests.get(url)
+        resp.raise_for_status()
+        
+        # 2. Extract to temp
+        with zipfile.ZipFile(io.BytesIO(resp.content)) as z:
+            # GitHub zips put everything in a root folder e.g. "manual-bot-main/"
+            root_folder = z.namelist()[0]
+            
+            for member in z.namelist():
+                # Remove root folder from path
+                rel_path = member[len(root_folder):]
+                if not rel_path or rel_path.endswith('/'):
+                    continue
+                    
+                # SAFEGUARDS: Skip protected files
+                if rel_path == ".env": continue
+                if rel_path.startswith("data/"): continue # SKIP DATA FOLDER ENTIRELY to preserve user jsons
+                if rel_path == "crash_log.txt": continue
+                
+                # Write file
+                target_path = os.path.join(os.getcwd(), rel_path)
+                
+                # Ensure dir exists
+                os.makedirs(os.path.dirname(target_path), exist_ok=True)
+                
+                with z.open(member) as source, open(target_path, "wb") as target:
+                    shutil.copyfileobj(source, target)
+                    
+        # 3. Write version.txt
+        sha = get_remote_commit_sha()
+        if sha:
+            with open("version.txt", "w") as f:
+                f.write(sha)
+                
+        log("ZIP update finished successfully.")
+        return True
+        
+    except Exception as e:
+        log(f"Error during ZIP update: {e}")
+        return False
+
 def update_from_git():
     log("Pulling from Git...")
     try:
@@ -64,29 +150,40 @@ def update_from_git():
         return False
 
 def check_updates():
-    """Check for updates without applying."""
+    """Check for updates (Git or API)."""
     log("Checking for updates...")
-    try:
-        subprocess.check_call(["git", "--version"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        
-        # Fetch remote headers
-        subprocess.run(["git", "fetch"], check=True, capture_output=True)
-        
-        # Check if behind
-        # git rev-list --count HEAD..origin/main
-        result = subprocess.run(["git", "rev-list", "--count", "HEAD..origin/main"], capture_output=True, text=True)
-        
-        if result.returncode == 0:
-            count = int(result.stdout.strip())
-            if count > 0:
-                print(f"UPDATE_AVAILABLE:{count}") # specific output for GUI to parse
-                return True
-            else:
-                print("UPDATE_NONE")
-                return False
-        return False
-    except Exception as e:
-        log(f"Error checking updates: {e}")
+    
+    # Method A: Git
+    if os.path.exists(".git"):
+        try:
+            subprocess.check_call(["git", "--version"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(["git", "fetch"], check=True, capture_output=True)
+            result = subprocess.run(["git", "rev-list", "--count", "HEAD..origin/main"], capture_output=True, text=True)
+            if result.returncode == 0:
+                count = int(result.stdout.strip())
+                if count > 0:
+                    print(f"UPDATE_AVAILABLE:{count}")
+                    return True
+                else:
+                    print("UPDATE_NONE")
+                    return False
+        except Exception as e:
+            log(f"Git check failed: {e}")
+            # Fallthrough to API check
+            
+    # Method B: API vs Local Version
+    remote = get_remote_commit_sha()
+    local = get_local_version()
+    
+    if remote and local and remote != local:
+        print("UPDATE_AVAILABLE:unknown")
+        return True
+    elif remote and not local:
+        # No local version? Assume update available or just fresh install.
+        print("UPDATE_AVAILABLE:new_install")
+        return True
+    else:
+        print("UPDATE_NONE")
         return False
 
 def check_dependencies():
@@ -137,7 +234,8 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--pid", help="PID of the running bot to kill/restart (if not using batch loop mode)")
-    parser.add_argument("--git", action="store_true", help="Update via Git")
+    parser.add_argument("--git", action="store_true", help="Force Update via Git")
+    parser.add_argument("--zip", action="store_true", help="Force Update via ZIP")
     parser.add_argument("--dry-run", action="store_true", help="Test run without changes")
     parser.add_argument("--check", action="store_true", help="Check for updates only")
     
@@ -156,12 +254,25 @@ if __name__ == "__main__":
         create_backup()
         
         updated = False
-        if args.git:
+        
+        # Decide method
+        has_git = False
+        try:
+            subprocess.check_call(["git", "--version"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            if os.path.exists(".git"):
+                has_git = True
+        except: pass
+        
+        if args.zip:
+            updated = update_from_zip()
+        elif args.git or has_git:
             updated = update_from_git()
+            if not updated and not has_git:
+                log("Git update failed, falling back to ZIP...")
+                updated = update_from_zip()
         else:
-            # Default to git if nothing specified? Or fail?
-            # For now, let's assume git is primary method
-            updated = update_from_git()
+            # Default fallback
+            updated = update_from_zip()
             
         if updated:
             check_dependencies()
