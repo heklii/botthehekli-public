@@ -7,6 +7,4 @@ simpleeval
 pystray
 Pillow
 watchdog
-flask
-werkzeug
 requests
