@@ -1660,19 +1660,19 @@ if __name__ == "__main__":
         print("Error: TWITCH_TOKEN or CHANNEL not set in config/env.")
         sys.exit(1)
         
+    # Create a persistent event loop for the application
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    
     # Pre-flight Token Validation
     try:
         from token_manager import TokenManager
         from dotenv import load_dotenv
-        import asyncio
         
         print("Validating tokens before startup...")
         
-        # In Python 3.10+, checking or creating a loop is tricky if one doesn't exist.
-        # asyncio.run() creates a new one and closes it.
-        # This is fine for the check, BUT we must ensure a loop exists for TwitchIO afterwards.
-        
-        valid = asyncio.run(TokenManager().validate_and_refresh_tokens())
+        # Run validation on the PERMANENT loop
+        valid = loop.run_until_complete(TokenManager().validate_and_refresh_tokens())
         
         if not valid:
             print("\n" + "!"*50)
@@ -1691,21 +1691,25 @@ if __name__ == "__main__":
         print(f"Warning: Pre-flight token check failed: {e}")
     
     try:
-        # FIX: Ensure a new event loop is set for the main thread, 
-        # because asyncio.run() above might have closed the previous one 
-        # or left the thread without one.
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
+        # Initialize Bot with the EXISTING loop (via global get_event_loop)
         bot = Bot()
+        
+        # Run the bot using the existing loop
+        # bot.run() calls self.loop.run_until_complete(self.start())
+        # This works fine with our pre-existing loop
         bot.run()
+        
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        # Check for auth error string (since we might not have the class imported to catch)
-        if "AuthenticationError" in str(e) or "401" in str(e):
-            print("\n" + "!"*50)
-            print("AUTHENTICATION ERROR: The bot token is invalid or expired.")
-            print("Please run 'generate_token.bat' to fix this.")
-            print("!"*50 + "\n")
-        input("Press Enter to exit...")
+        # Suppress the known TwitchIO 2.x 'NoneType' cancel error on exit
+        if "NoneType" in str(e) and "cancel" in str(e):
+            pass
+        else:
+            import traceback
+            traceback.print_exc()
+            
+            if "AuthenticationError" in str(e) or "401" in str(e):
+                print("\n" + "!"*50)
+                print("AUTHENTICATION ERROR: The bot token is invalid or expired.")
+                print("Please run 'generate_token.bat' to fix this.")
+                print("!"*50 + "\n")
+            input("Press Enter to exit...")
