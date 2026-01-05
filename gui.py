@@ -482,10 +482,19 @@ class BotGUI:
             print("Checking for updates...")
             # Run updater.py --check
             # Use subprocess to capture output
-            cmd = ["python", "updater.py", "--check"]
+            # Use sys.executable to ensure we use the same python environment
+            cmd = [sys.executable, "updater.py", "--check"]
             result = subprocess.run(cmd, capture_output=True, text=True)
             
             output = result.stdout.strip()
+            error_out = result.stderr.strip()
+            
+            if result.returncode != 0:
+                 print(f"Updater check failed (Code {result.returncode}):")
+                 print(f"Stdout: {output}")
+                 print(f"Stderr: {error_out}")
+                 messagebox.showerror("Update Check Failed", f"Updater failed/crashed.\n\nStderr: {error_out}")
+                 return
             
             if "UPDATE_AVAILABLE" in output:
                 # Parse count if needed: UPDATE_AVAILABLE:5
@@ -503,6 +512,9 @@ class BotGUI:
                 messagebox.showinfo("Update Check", "Bot is up to date.")
             else:
                 print(f"Update check finished with unexpected output: {output}")
+                if error_out:
+                    print(f"Stderr was: {error_out}")
+                messagebox.showwarning("Update Check", f"Unexpected output:\n{output}\n\nStderr: {error_out}")
                 
         except Exception as e:
             print(f"Error checking updates: {e}")
