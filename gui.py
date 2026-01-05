@@ -132,6 +132,48 @@ class CommandEditorDialog(tk.Toplevel):
     def cancel(self):
         self.destroy()
 
+class UpdateMethodDialog(tk.Toplevel):
+    def __init__(self, parent, count_str):
+        super().__init__(parent)
+        self.title("Update Available")
+        self.geometry("400x250")
+        self.result = None
+        
+        self.transient(parent)
+        self.grab_set()
+        
+        # UI
+        frame = ttk.Frame(self, padding=20)
+        frame.pack(fill=tk.BOTH, expand=True)
+        
+        ttk.Label(frame, text=f"An update is available! ({count_str} commits)", font=('Segoe UI', 11, 'bold')).pack(pady=(0, 10))
+        ttk.Label(frame, text="Choose how you want to update:", font=('Segoe UI', 10)).pack(pady=(0, 20))
+        
+        # Buttons
+        ttk.Button(frame, text="Update via ZIP (Recommended)", command=lambda: self.set_result('zip')).pack(fill=tk.X, pady=5)
+        ttk.Label(frame, text="Downloads latest code from GitHub. Best for most users.", font=('Segoe UI', 8), foreground='gray').pack(pady=(0, 10))
+        
+        ttk.Button(frame, text="Update via Git", command=lambda: self.set_result('git')).pack(fill=tk.X, pady=5)
+        ttk.Label(frame, text="Uses 'git pull'. fast, but requires Git installed.", font=('Segoe UI', 8), foreground='gray').pack(pady=(0, 10))
+        
+        ttk.Button(frame, text="Cancel", command=self.cancel).pack(fill=tk.X, pady=(10, 0))
+
+        # Center
+        self.update_idletasks()
+        width = self.winfo_width()
+        height = self.winfo_height()
+        x = (self.winfo_screenwidth() // 2) - (width // 2)
+        y = (self.winfo_screenheight() // 2) - (height // 2)
+        self.geometry(f'+{x}+{y}')
+
+    def set_result(self, method):
+        self.result = method
+        self.destroy()
+
+    def cancel(self):
+        self.result = None
+        self.destroy()
+
 class PermissionEditorDialog(tk.Toplevel):
     def __init__(self, parent, command, current_roles):
         super().__init__(parent)
@@ -504,9 +546,17 @@ class BotGUI:
                     
                 print(f"Update available! ({count} commits behind)")
                 
-                # Ask user
-                if messagebox.askyesno("Update Available", f"An update is available ({count} commits).\n\nDo you want to update now?\nThe bot will restart."):
-                    self.perform_update()
+                print(f"Update available! ({count} commits behind)")
+                
+                # Ask user via Custom Dialog
+                dlg = UpdateMethodDialog(self.root, count)
+                self.root.wait_window(dlg)
+                
+                if dlg.result:
+                    print(f"User selected update method: {dlg.result}")
+                    self.perform_update(method=dlg.result)
+                else:
+                    print("Update cancelled by user.")
             elif "UPDATE_NONE" in output:
                 print("Bot is up to date.")
                 messagebox.showinfo("Update Check", "Bot is up to date.")
@@ -520,10 +570,10 @@ class BotGUI:
             print(f"Error checking updates: {e}")
             messagebox.showerror("Update Error", str(e))
 
-    def perform_update(self):
+    def perform_update(self, method='zip'):
         """Launch updater to perform actual update"""
         try:
-            print("Launching updater...")
+            print(f"Launching updater (Method: {method})...")
             # We use Popen and passing PID so updater can kill us/wait
             # But since we are the GUI, we might want to close gracefully?
             # actually if we pass PID of this process, updater kills it.
@@ -536,6 +586,13 @@ class BotGUI:
             restart_cmd = f'{sys.executable} "{os.path.abspath("gui.py")}"'
             
             cmd = [sys.executable, "updater.py", "--pid", str(os.getpid()), "--restart-cmd", restart_cmd]
+            
+            # Add method flag
+            if method == 'git':
+                cmd.append("--git")
+            else:
+                cmd.append("--zip")
+                
             subprocess.Popen(cmd)
             
             # Application presumably dies now or shortly
