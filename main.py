@@ -1004,7 +1004,9 @@ class Bot(commands.Bot):
                     return
 
                 response_template = self.custom_commands[cmd_name]
+                per_stream = False
                 if isinstance(response_template, dict):
+                    per_stream = response_template.get('per_stream_eval', False)
                     response_template = response_template.get('response', '')
 
                 print(f"Processing custom command: {cmd_name} -> {response_template}")
@@ -1015,6 +1017,8 @@ class Bot(commands.Bot):
                 # Create context wrapper for the engine
                 ctx = await self.get_context(message)
                 engine_ctx = ContextWrapper(ctx, command_name=cmd_name)
+                engine_ctx.per_stream_eval = per_stream # PASS FLAG TO ENGINE
+                engine_ctx.author_id = message.author.id # Pass ID for caching logic
                 
                 try:
                     reply = await self.engine.process_response(response_template, engine_ctx)
@@ -1027,6 +1031,7 @@ class Bot(commands.Bot):
             # Split message to get the first word as potential command
             first_word = content.split(' ')[0].lower()
             
+            # 1. Exact match (Non-prefixed command)
             if first_word in self.custom_commands:
                 # Found a non-prefixed command match
                 cmd_name = first_word
@@ -1042,7 +1047,9 @@ class Bot(commands.Bot):
                     return
 
                 response_template = self.custom_commands[cmd_name]
+                per_stream = False
                 if isinstance(response_template, dict):
+                    per_stream = response_template.get('per_stream_eval', False)
                     response_template = response_template.get('response', '')
 
                 print(f"Processing non-prefixed command: {first_word} -> {cmd_name} -> {response_template}")
@@ -1053,6 +1060,8 @@ class Bot(commands.Bot):
                 # Create context wrapper for the engine
                 ctx = await self.get_context(message)
                 engine_ctx = ContextWrapper(ctx, command_name=cmd_name)
+                engine_ctx.per_stream_eval = per_stream
+                engine_ctx.author_id = message.author.id
                 
                 try:
                     reply = await self.engine.process_response(response_template, engine_ctx)
@@ -1060,6 +1069,61 @@ class Bot(commands.Bot):
                 except Exception as e:
                     print(f"Error processing command {cmd_name}: {e}")
                 return  # Exit early
+            
+            # 2. Keyword Search (Anywhere in message)
+            # Only if NO other command matched yet
+            content_lower = content.lower()
+            for trigger, data in self.custom_commands.items():
+                # Skip if not a dict (legacy string layout) or anywhere is false
+                if not isinstance(data, dict) or not data.get('anywhere', False):
+                    continue
+                
+                # Check if trigger is in content
+                # Use word boundary check or simple 'in'? 
+                # User asked for "in chat", usually implies word.
+                # But simple 'in' is easier. "ewwwww ns" -> "ns" matches.
+                # To fail "trans", we need boundaries.
+                # Let's try simple 'in' for now as requested ("ewwwww ns" example).
+                # Actually, "eww ns" implies word boundary.
+                # "ewwwwns" might be weird.
+                # Let's verify strict word boundary: `\btrigger\b`
+                
+                import re
+                
+                # Smart Regex Construction
+                pattern = re.escape(trigger)
+                
+                # If trigger starts with word char, add \b at start
+                if re.match(r'\w', trigger[0]):
+                    pattern = r'\b' + pattern
+                # If trigger ends with word char, add \b at end
+                if re.match(r'\w', trigger[-1]):
+                    pattern = pattern + r'\b'
+                    
+                if re.search(pattern, content_lower):
+                     print(f"Keyword match: {trigger} in '{content}'")
+                     
+                     # Process command
+                     ctx = await self.get_context(message)
+                     if not self.check_permission(ctx, trigger):
+                         continue # Skip this one, try others? Or stop?
+                         
+                     if self.check_cooldown(trigger):
+                         continue
+                         
+                     response_template = data.get('response', '')
+                     per_stream = data.get('per_stream_eval', False)
+                     self.engine.increment_count(trigger)
+                     
+                     engine_ctx = ContextWrapper(ctx, command_name=trigger)
+                     engine_ctx.per_stream_eval = per_stream
+                     engine_ctx.author_id = message.author.id
+                     try:
+                        reply = await self.engine.process_response(response_template, engine_ctx)
+                        await message.channel.send(reply)
+                     except Exception as e:
+                        print(f"Error processing keyword cmd {trigger}: {e}")
+                     return # Only fire ONE keyword command per message to avoid spam
 
         # Handle native commands (including aliased ones) - only if message starts with !
         if is_prefixed:
@@ -1119,6 +1183,12 @@ class Bot(commands.Bot):
             if cmd_trigger in self.commands:
                  await ctx.send(f"Cannot overwrite native command {cmd_trigger}")
                  return
+            
+            # PREVENT OVERWRITE
+            if cmd_trigger.lower() in self.custom_commands:
+                 await ctx.send(f"Command {cmd_trigger} already exists. Use !editcom to change it.")
+                 return
+
             self.custom_commands[cmd_trigger.lower()] = response
             self.save_commands()
             # Sync permissions for the new command
@@ -1148,6 +1218,40 @@ class Bot(commands.Bot):
                 await ctx.send(f"Command {cmd_trigger} updated.")
             else:
                 await ctx.send(f"Command {cmd_trigger} not found.")
+
+    @commands.command(name='keyword', aliases=['comtoggle', 'anywhere'])
+    async def cmd_keyword_toggle(self, ctx, trigger=None):
+        """Toggle 'anywhere' trigger mode for a custom command."""
+        if not self.check_permission(ctx, '!commands'):
+            return
+
+        if not trigger:
+            await ctx.send("Usage: !keyword <command_trigger>")
+            return
+            
+        trigger = trigger.lower()
+        if trigger not in self.custom_commands:
+            await ctx.send(f"Command {trigger} not found.")
+            return
+            
+        # Get current command data
+        cmd_data = self.custom_commands[trigger]
+        
+        # Ensure it's a dict (migrate if string)
+        if isinstance(cmd_data, str):
+            cmd_data = {"response": cmd_data, "count": 0, "anywhere": False}
+        
+        # Toggle state
+        current_state = cmd_data.get('anywhere', False)
+        new_state = not current_state
+        cmd_data['anywhere'] = new_state
+        
+        # Save back
+        self.custom_commands[trigger] = cmd_data
+        self.save_commands()
+        
+        state_str = "ENABLED" if new_state else "DISABLED"
+        await ctx.send(f"Keyword trigger for {trigger} is now {state_str}. (Triggers anywhere in chat)")
 
     @commands.command(name='alias', aliases=['addalias', 'delalias', 'editalias'])
     async def cmd_alias_manage(self, ctx, *args):

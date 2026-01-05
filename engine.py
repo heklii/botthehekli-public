@@ -4,6 +4,7 @@ import asyncio
 import random
 import json
 import os
+import datetime
 from simpleeval import simple_eval
 
 class SimpleContext:
@@ -20,7 +21,15 @@ class NightbotEngine:
         self.session = None
         self.counts = {}
         self.counts_file = os.path.join(os.path.dirname(__file__), 'data', 'counts.json')
+        self.counts_file = os.path.join(os.path.dirname(__file__), 'data', 'counts.json')
         self.load_counts()
+        self.eval_cache = {} # (request_id, cmd_name, user_id) -> result
+        self.current_request_id = str(datetime.datetime.now().timestamp()) # reset on restart
+
+    def reset_eval_cache(self):
+        """Reset the per-stream eval cache."""
+        self.eval_cache = {}
+        self.current_request_id = str(datetime.datetime.now().timestamp())
 
     async def get_session(self):
         if self.session is None:
@@ -210,13 +219,31 @@ class NightbotEngine:
             elif cmd == "eval":
                 # Python Eval
                 try:
-                    # WE are using Python eval, not JS.
-                    # We inject specific variables for convenience
-                    # But Nightbot variables should be resolved by now (inside-out)
-                    print(f"[EVAL DEBUG] Evaluating: {arg}")  # Debug
-                    result = str(simple_eval(arg, names={"random": random}))
-                    print(f"[EVAL DEBUG] Result: {result}")  # Debug
-                    replacement = result
+                    # CHECK CACHE if enabled
+                    # We need access to these context vars
+                    per_stream = getattr(ctx, 'per_stream_eval', False)
+                    command_name = getattr(ctx, 'command_name', None)
+                    user_id = getattr(ctx, 'author_id', None) # or just author name if ID not avail
+                    if not user_id:
+                         user_id = author
+                    
+                    cache_key = (self.current_request_id, command_name, user_id)
+                    
+                    if per_stream and command_name and cache_key in self.eval_cache:
+                        replacement = self.eval_cache[cache_key]
+                        print(f"[EVAL CACHE] Hit for {command_name} user {user_id}: {replacement}")
+                    else:
+                        # WE are using Python eval, not JS.
+                        # We inject specific variables for convenience
+                        # But Nightbot variables should be resolved by now (inside-out)
+                        print(f"[EVAL DEBUG] Evaluating: {arg}")  # Debug
+                        result = str(simple_eval(arg, names={"random": random}))
+                        print(f"[EVAL DEBUG] Result: {result}")  # Debug
+                        replacement = result
+                        
+                        if per_stream and command_name:
+                            self.eval_cache[cache_key] = result
+                            
                 except Exception as e:
                     print(f"[EVAL DEBUG] Error: {e}")  # Debug
                     replacement = f"[Eval Error: {e}]"

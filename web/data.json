@@ -1,0 +1,20 @@
+[
+    {
+        "trigger": "!clip",
+        "response": "Create a clip of the last 30s",
+        "permission": "moderator, broadcaster",
+        "type": "Custom"
+    },
+    {
+        "trigger": "!discord",
+        "response": "Join our community! https://discord.gg/yourlink",
+        "permission": "everyone",
+        "type": "Custom"
+    },
+    {
+        "trigger": "!socials",
+        "response": "Follow me on Twitter: @yourname",
+        "permission": "everyone",
+        "type": "Custom"
+    }
+]

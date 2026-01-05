@@ -48,15 +48,32 @@ class RedirectText:
         pass
 
 class CommandEditorDialog(tk.Toplevel):
-    def __init__(self, parent, title, initial_cmd="", initial_resp=""):
+    def __init__(self, parent, title, initial_cmd_data=None):
         super().__init__(parent)
         self.title(title)
-        self.geometry("500x300")
+        self.geometry("500x450") # Taller for options
         self.result = None
+        
+        # Parse initial data helper
+        cmd_name = ""
+        initial_resp = ""
+        
+        if initial_cmd_data:
+            cmd_name = initial_cmd_data.get('trigger', '')
+            initial_resp = initial_cmd_data.get('response', '')
+            initial_cmd = initial_cmd_data
+        else:
+            initial_cmd = {}
+
+        # ... (rest handled by chunks above)
         
         # Center the dialog
         self.transient(parent)
         self.grab_set()
+        
+        # Flags
+        self.anywhere_var = tk.BooleanVar(value=initial_cmd.get('anywhere', False) if isinstance(initial_cmd, dict) else False)
+        self.per_stream_var = tk.BooleanVar(value=initial_cmd.get('per_stream_eval', False) if isinstance(initial_cmd, dict) else False)
         
         # UI
         frame = ttk.Frame(self, padding=20)
@@ -64,13 +81,21 @@ class CommandEditorDialog(tk.Toplevel):
         
         ttk.Label(frame, text="Command Name:", font=('Segoe UI', 10, 'bold')).pack(anchor=tk.W)
         self.entry_cmd = ttk.Entry(frame, width=40)
-        self.entry_cmd.insert(0, initial_cmd)
+        self.entry_cmd.insert(0, cmd_name)
         self.entry_cmd.pack(fill=tk.X, pady=(5, 15))
         
         ttk.Label(frame, text="Response:", font=('Segoe UI', 10, 'bold')).pack(anchor=tk.W)
         self.entry_resp = scrolledtext.ScrolledText(frame, height=5, font=('Segoe UI', 9))
         self.entry_resp.insert('1.0', initial_resp)
-        self.entry_resp.pack(fill=tk.BOTH, expand=True, pady=(5, 15))
+        self.entry_resp.insert('1.0', initial_resp)
+        self.entry_resp.pack(fill=tk.BOTH, expand=True, pady=(5, 10))
+        
+        # Checkboxes
+        opts_frame = ttk.LabelFrame(frame, text="Options", padding=10)
+        opts_frame.pack(fill=tk.X, pady=(0, 15))
+        
+        ttk.Checkbutton(opts_frame, text="Trigger Anywhere in Chat", variable=self.anywhere_var).pack(anchor=tk.W)
+        ttk.Checkbutton(opts_frame, text="Per-Stream Eval Results (Static)", variable=self.per_stream_var).pack(anchor=tk.W)
         
         btn_frame = ttk.Frame(frame)
         btn_frame.pack(fill=tk.X)
@@ -94,7 +119,14 @@ class CommandEditorDialog(tk.Toplevel):
             messagebox.showwarning("Validation", "Response cannot be empty.", parent=self)
             return
             
-        self.result = (cmd, resp)
+            return
+            
+        self.result = {
+            "trigger": cmd,
+            "response": resp,
+            "anywhere": self.anywhere_var.get(),
+            "per_stream_eval": self.per_stream_var.get()
+        }
         self.destroy()
 
     def cancel(self):
@@ -622,11 +654,24 @@ class BotGUI:
         """Add a new command via dialog"""
         dlg = CommandEditorDialog(self.root, "Add Command")
         if dlg.result:
-            cmd, resp = dlg.result
-            
-            # Save
+            data = dlg.result
+            cmd = data['trigger']
+            if not cmd.startswith('!'): cmd = '!' + cmd # Enforce prefix for key
+
             cmds = self.load_json(COMMANDS_FILE)
-            cmds[cmd] = {"response": resp, "ul": "everyone", "type": "custom"}
+            
+            # Simple overwrite check (GUI version)
+            # if cmd in cmds: confirm overwrite? 
+            # User logic handled in main.py, but here we can just overwrite or warn.
+            # Let's just save.
+            
+            cmds[cmd] = {
+                "response": data['response'], 
+                "ul": "everyone", 
+                "type": "custom",
+                "anywhere": data['anywhere'],
+                "per_stream_eval": data['per_stream_eval']
+            }
             self.save_json(COMMANDS_FILE, cmds)
             self.refresh_commands()
             
@@ -636,11 +681,27 @@ class BotGUI:
         if not sel: return
         item = self.tree_cmds.item(sel[0])
         old_cmd = item['values'][0]
-        old_resp = item['values'][1]
+        # values[1] is response, but we should load full data from file to get flags
         
-        dlg = CommandEditorDialog(self.root, "Edit Command", old_cmd, old_resp)
+        cmds = self.load_json(COMMANDS_FILE)
+        if old_cmd not in cmds: return
+        
+        # Load full data
+        cmd_data = cmds[old_cmd]
+        if isinstance(cmd_data, str):
+            cmd_data = {"response": cmd_data}
+        
+        # Prepare for dialog
+        # We need to construct the dict we expect in __init__
+        init_data = cmd_data.copy()
+        init_data['trigger'] = old_cmd
+        
+        dlg = CommandEditorDialog(self.root, "Edit Command", initial_cmd_data=init_data)
+        
         if dlg.result:
-            new_cmd, new_resp = dlg.result
+            data = dlg.result
+            new_cmd = data['trigger']
+            if not new_cmd.startswith('!'): new_cmd = '!' + new_cmd
             
             cmds = self.load_json(COMMANDS_FILE)
             
@@ -648,7 +709,13 @@ class BotGUI:
             if new_cmd != old_cmd and old_cmd in cmds:
                 del cmds[old_cmd]
             
-            cmds[new_cmd] = {"response": new_resp, "ul": "everyone", "type": "custom"} # preserve role? simplifed for now
+            cmds[new_cmd] = {
+                "response": data['response'], 
+                "ul": "everyone", 
+                "type": "custom",
+                "anywhere": data['anywhere'],
+                "per_stream_eval": data['per_stream_eval']
+            }
             self.save_json(COMMANDS_FILE, cmds)
             self.refresh_commands()
             

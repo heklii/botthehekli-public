@@ -3,6 +3,7 @@ Cider (Apple Music) integration for managing song queue via Cider client API.
 """
 import requests
 import re
+import difflib
 from config import CIDER_TOKEN, CIDER_HOST
 
 class CiderManager:
@@ -163,10 +164,51 @@ class CiderManager:
             print(f"Error scraping metadata: {e}")
             return None
 
+    def calculate_score(self, query, track_name, artist_name):
+        """Calculate match score for ranking search results."""
+        if not track_name or not artist_name:
+            return 0
+            
+        query = query.lower()
+        track_name = track_name.lower()
+        artist_name = artist_name.lower()
+        
+        score = 0
+        
+        # Check for direct containment
+        if query in track_name:
+            score += 30
+        if query in artist_name:
+            score += 20
+            
+        # Check for direct containment of parts in query
+        if track_name in query:
+            score += 30
+        if artist_name in query:
+            score += 20
+
+        # Token overlap
+        query_tokens = set(query.split())
+        track_tokens = set(track_name.split())
+        artist_tokens = set(artist_name.split())
+        
+        track_overlap = len(query_tokens.intersection(track_tokens))
+        artist_overlap = len(query_tokens.intersection(artist_tokens))
+        
+        score += track_overlap * 10
+        score += artist_overlap * 10
+        
+        # Fuzzy match as tiebreaker
+        full_str = f"{track_name} {artist_name}"
+        fuzzy = difflib.SequenceMatcher(None, query, full_str).ratio()
+        score += fuzzy * 10
+        
+        return score
+
     def search_track(self, query):
         """
         Search for a track using Cider's Apple Music API proxy.
-        GET /api/v1/amapi/catalog/{storefront}/search?types=songs&term=...&limit=1
+        GET /api/v1/amapi/catalog/{storefront}/search?types=songs&term=...&limit=5
         """
         try:
             storefront = 'us'
@@ -174,7 +216,7 @@ class CiderManager:
             params = {
                 'types': 'songs',
                 'term': query,
-                'limit': 1
+                'limit': 5  # Increase limit to check more candidates
             }
             r = requests.get(url, headers=self.headers, params=params, timeout=5)
             
@@ -183,15 +225,31 @@ class CiderManager:
                 # Structure: results -> songs -> data -> [ { id: ..., attributes: ... } ]
                 songs = data.get('results', {}).get('songs', {}).get('data', [])
                 if songs:
-                    song = songs[0]
-                    track_id = song['id']
-                    attrs = song['attributes']
+                    # Rank results
+                    ranked_songs = []
+                    for song in songs:
+                        attrs = song['attributes']
+                        name = attrs.get('name', '')
+                        artist = attrs.get('artistName', '')
+                        
+                        score = self.calculate_score(query, name, artist)
+                        ranked_songs.append((score, song))
+                    
+                    # Sort desc by score
+                    ranked_songs.sort(key=lambda x: x[0], reverse=True)
+                    
+                    # Pick best
+                    best_match = ranked_songs[0][1]
+                    track_id = best_match['id']
+                    attrs = best_match['attributes']
+                    
                     track_info = {
                         'id': track_id,
                         'name': attrs.get('name'),
                         'artist': attrs.get('artistName'),
                         'url': attrs.get('url')
                     }
+                    print(f"🎯 Best match for '{query}': {track_info['name']} by {track_info['artist']} (Score: {ranked_songs[0][0]:.2f})")
                     return True, "SEARCH_SUCCESS", track_info
             else:
                  print(f"⚠️ Cider search failed: {r.status_code} {r.text}")
