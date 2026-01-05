@@ -237,7 +237,6 @@ if __name__ == "__main__":
     parser.add_argument("--git", action="store_true", help="Force Update via Git")
     parser.add_argument("--zip", action="store_true", help="Force Update via ZIP")
     parser.add_argument("--dry-run", action="store_true", help="Test run without changes")
-    parser.add_argument("--dry-run", action="store_true", help="Test run without changes")
     parser.add_argument("--check", action="store_true", help="Check for updates only")
     parser.add_argument("--restart-cmd", help="Command to run after update (e.g. 'python gui.py')")
     
