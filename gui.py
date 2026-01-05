@@ -592,12 +592,22 @@ class BotGUI:
                 cmd.append("--git")
             else:
                 cmd.append("--zip")
+            
+            # Use CREATE_NEW_CONSOLE to detach and show window (Windows only)
+            # This prevents updater from dying when we die, and lets user see output.
+            creation_flags = 0
+            if sys.platform == "win32":
+                creation_flags = subprocess.CREATE_NEW_CONSOLE
                 
-            subprocess.Popen(cmd)
+            subprocess.Popen(cmd, creationflags=creation_flags)
             
             # Application presumably dies now or shortly
+            # But let's close explicitly to be nice
+            self.stop_bot()
+            self.root.quit()
         except Exception as e:
             print(f"Error launching updater: {e}")
+            messagebox.showerror("Updater Error", str(e))
 
     def update_logs(self):
         while not self.log_queue.empty():

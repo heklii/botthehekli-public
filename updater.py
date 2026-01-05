@@ -271,12 +271,16 @@ if __name__ == "__main__":
                 # Use Popen to launch detached. Shell=True needed for complex cmds or batch?
                 # 'python gui.py' works fine.
                 subprocess.Popen(args.restart_cmd, shell=True)
-                
+            else:
+                 input("\nUpdate finished. Press Enter to close this window...")
+
             # We return 0. The calling bot should handle the restart signal.
         else:
             log("Update failed or no changes.")
+            input("\nUpdate failed. Press Enter to close...")
             sys.exit(1)
             
     except Exception as e:
         log(f"Critical Updater Error: {e}")
+        input("\nCritical Error. Press Enter to close...")
         sys.exit(1)
