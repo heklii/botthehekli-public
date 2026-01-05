@@ -10,3 +10,5 @@ venv/
 .spotify_cache
 token_generator/config.json
 data/*.json
+token_generator - Copy/
+token_generator - Copy.7z
