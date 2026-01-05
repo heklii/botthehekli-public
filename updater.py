@@ -237,7 +237,9 @@ if __name__ == "__main__":
     parser.add_argument("--git", action="store_true", help="Force Update via Git")
     parser.add_argument("--zip", action="store_true", help="Force Update via ZIP")
     parser.add_argument("--dry-run", action="store_true", help="Test run without changes")
+    parser.add_argument("--dry-run", action="store_true", help="Test run without changes")
     parser.add_argument("--check", action="store_true", help="Check for updates only")
+    parser.add_argument("--restart-cmd", help="Command to run after update (e.g. 'python gui.py')")
     
     args = parser.parse_args()
     
@@ -276,7 +278,15 @@ if __name__ == "__main__":
             
         if updated:
             check_dependencies()
+            check_dependencies()
             log("Update successful.")
+            
+            if args.restart_cmd:
+                log(f"Restarting application: {args.restart_cmd}")
+                # Use Popen to launch detached. Shell=True needed for complex cmds or batch?
+                # 'python gui.py' works fine.
+                subprocess.Popen(args.restart_cmd, shell=True)
+                
             # We return 0. The calling bot should handle the restart signal.
         else:
             log("Update failed or no changes.")

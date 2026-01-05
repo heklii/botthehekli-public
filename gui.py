@@ -516,7 +516,14 @@ class BotGUI:
             # But since we are the GUI, we might want to close gracefully?
             # actually if we pass PID of this process, updater kills it.
             
-            cmd = ["python", "updater.py", "--pid", str(os.getpid())]
+            # Application presumably dies now or shortly
+            
+            # Construct restart command
+            # If running as python script: python gui.py
+            # If compiled exe? We assume python for now.
+            restart_cmd = f'{sys.executable} "{os.path.abspath("gui.py")}"'
+            
+            cmd = [sys.executable, "updater.py", "--pid", str(os.getpid()), "--restart-cmd", restart_cmd]
             subprocess.Popen(cmd)
             
             # Application presumably dies now or shortly
