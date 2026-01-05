@@ -195,8 +195,8 @@ def check_dependencies():
         except Exception as e:
             log(f"Error installing dependencies: {e}")
 
-def restart_bot(current_pid):
-    log(f"Restarting bot (PID: {current_pid})...")
+def kill_old_process(current_pid):
+    log(f"Terminating old bot process (PID: {current_pid})...")
     
     # 1. Kill the current bot process if provided
     if current_pid:
@@ -210,25 +210,6 @@ def restart_bot(current_pid):
             log("Old process already gone.")
         except Exception as e:
             log(f"Error terminating process: {e}")
-            
-    # 2. Exit with specific code to tell batch wrapper to restart
-    # We are the updater, running as a subprocess or separate process.
-    # If we were called by the bot, the bot is already waiting or dead.
-    # If the bot is running via a batch loop that checks exit code, we don't need to spawn new one,
-    # we just need to make sure the OLD one exits with the right code (if we were the parent?)
-    # BUT, this script is likely called via `subprocess.Popen` from the bot.
-    # So if we kill the bot (parent), we might die too unless detached.
-    
-    # Better approach for Batch Loop:
-    # 1. Bot calls Updater.
-    # 2. Updater does work.
-    # 3. Updater finishes.
-    # 4. Bot (waiting for updater) sees success.
-    # 5. Bot exits with code 42.
-    # 6. Batch loop sees 42 -> restarts.
-    
-    # So we don't kill here. We just return success.
-    log("Update complete. Exiting updater.")
 
 if __name__ == "__main__":
     import argparse
@@ -252,6 +233,11 @@ if __name__ == "__main__":
         sys.exit(0)
         
     try:
+        if args.pid:
+            kill_old_process(args.pid)
+            # Give it a moment to release file handles
+            time.sleep(1)
+            
         create_backup()
         
         updated = False
